@@ -178,7 +178,7 @@ function generateNDEF(url) {
   const results = {
     ndef: buffer
   };
-  
+
   const UIDOffset = buffer.indexOf(UID_REPLACEMENT);
   if (UIDOffset !== NOT_FOUND) {
     buffer.fill("0", UIDOffset, UIDOffset + uidAsciiLength);
@@ -196,7 +196,7 @@ function generateNDEF(url) {
     buffer.fill("0", SDMMACOffset, SDMMACOffset + cmacAsciiLength);
     results["SDMMACOffset"] = SDMMACOffset;
   }
-  
+
   if (SDMMACInputOffset === NOT_FOUND) {
     if (SDMMACOffset !== NOT_FOUND) {
       results["SDMMACInputOffset"] = SDMMACOffset;
@@ -215,7 +215,7 @@ function generateNDEF(url) {
       throw new Error("UID and counter cannot overlap");
     }
   }
-  
+
   return results;
 }
 
@@ -314,7 +314,7 @@ function parseSettings(settings) {
   };
 }
 
-function generateFileSettings(offsets, FileAR = {Read: 0xe, Write: 0xe, ReadWrite: 0xe, Change: 0xe}, SDMAR = {SDMMetaRead: 0xe, SDMFileRead: 0x0, SDMCtrRet: 0xf}) {
+function generateFileSettings(offsets, FileAR = { Read: 0xe, Write: 0xe, ReadWrite: 0xe, Change: 0xe }, SDMAR = { SDMMetaRead: 0xe, SDMFileRead: 0x0, SDMCtrRet: 0xf }) {
   const {
     UIDOffset,
     SDMReadCtrOffset,
@@ -532,7 +532,7 @@ class NFCOperations {
     } else {
       console.log("response contained data, but I haven't coded how to handle that");
     }
-    
+
     return res;
   }
 
@@ -632,7 +632,7 @@ class NFCOperations {
       ]);
       keyData.writeUInt32LE(crc32, 17);
     }
-    
+
     if (this.commMode === CommMode.FULL) {
       await this.sendFull(encryptionParams, INS, keyNo, keyData, 'changeKey');
     } else {
@@ -690,7 +690,7 @@ class NFCOperations {
     if (!success.equals(res.slice(-2))) {
       throw new Error("error in write ndef");
     }
-    
+
     return { success: true };
   }
 
@@ -712,7 +712,7 @@ class NFCOperations {
     const length = res.readUInt16BE();
     // NOTE: I leave the length on for symmetry with generateNDEF
     const ndefData = res.slice(0, 2 + length);
-    
+
     try {
       // Ignore 2 length bytes
       const ndefRecords = NDEF.decodeMessage(ndefData.slice(2));
@@ -720,29 +720,29 @@ class NFCOperations {
         const record = ndefRecords[0];
         const { tnf, type, payload, value } = record;
         if (tnf === NDEF.TNF_WELL_KNOWN && type === NDEF.RTD_URI) {
-          return { 
-            ndef: ndefData, 
-            decoded: { 
-              tnf, 
-              type, 
-              payload: payload.toString('hex'), 
-              value 
-            } 
+          return {
+            ndef: ndefData,
+            decoded: {
+              tnf,
+              type,
+              payload: payload.toString('hex'),
+              value
+            }
           };
         }
-        return { 
-          ndef: ndefData, 
-          decoded: { 
-            tnf, 
-            type, 
-            payload: payload.toString('hex') 
-          } 
+        return {
+          ndef: ndefData,
+          decoded: {
+            tnf,
+            type,
+            payload: payload.toString('hex')
+          }
         };
       }
     } catch (e) {
       console.error("Error decoding NDEF:", e);
     }
-    
+
     return { ndef: ndefData };
   }
 
@@ -808,7 +808,7 @@ class NFCOperations {
       // Check if we have factory settings
       const factory = isFactorySettings(fileSettings);
       let auth = {};
-      
+
       // Process factory settings
       if (factory) {
         try {
@@ -1015,28 +1015,28 @@ app.post('/card/personalize', async (req, res) => {
 nfc.on("reader", (reader) => {
   reader.autoProcessing = false;
   console.log('Found NFC reader:', reader.reader.name);
-  
+
   if (reader.reader.name === CL_READER) {
     nfcReader = reader;
     isReaderReady = true;
     lastError = null;
     log.api(`Reader "${reader.reader.name}" is now active`);
-    
+
     reader.on("card", (card) => {
       log.api(`Card detected:`, card);
       currentCard = card;
     });
-    
+
     reader.on("card.off", (card) => {
       log.api(`Card removed:`, card);
       currentCard = null;
     });
-    
+
     reader.on("error", (err) => {
       console.error(`Reader error:`, err);
       lastError = err.message;
     });
-    
+
     reader.on("end", () => {
       log.api(`Reader "${reader.reader.name}" removed`);
       if (nfcReader === reader) {

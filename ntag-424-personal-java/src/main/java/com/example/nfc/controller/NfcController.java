@@ -1,12 +1,16 @@
 package com.example.nfc.controller;
 
+import com.example.nfc.entity.NfcItemMapping;
+import com.example.nfc.repository.NfcItemMappingRepository;
 import com.example.nfc.service.NfcOperations;
 import com.example.nfc.utils.CryptoUtils;
 import com.example.nfc.utils.NdefUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.smartcardio.*;
 import java.nio.charset.StandardCharsets;
@@ -17,6 +21,9 @@ import java.util.concurrent.locks.ReentrantLock;
 public class NfcController {
 
     private final ReentrantLock nfcLock = new ReentrantLock();
+
+    @Autowired
+    private NfcItemMappingRepository mappingRepository;
 
     @Value("${nfc.master-key-hex}")
     private String masterKeyHex;
@@ -326,10 +333,27 @@ public class NfcController {
 
             byte[] masterKey = CryptoUtils.hexToBytes(masterKeyHex);
 
+            // Extract item_cd query parameter if present
+            String itemCd = null;
+            try {
+                itemCd = UriComponentsBuilder.fromUriString(url)
+                        .build()
+                        .getQueryParams()
+                        .getFirst("item_cd");
+            } catch (Exception e) {
+                System.err.println("Could not parse URL query parameters: " + e.getMessage());
+            }
+
             Card card = terminal.connect("*");
             NfcOperations nfcOps = new NfcOperations(terminal, card);
 
             NfcOperations.PersonalizeResult result = nfcOps.personalize(masterKey, url);
+
+            if (result.success && itemCd != null) {
+                NfcItemMapping mapping = new NfcItemMapping(result.uid, itemCd, url);
+                mappingRepository.save(mapping);
+                System.out.println("NFC mapping saved to DB - UID: " + result.uid + ", Item Code: " + itemCd);
+            }
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
